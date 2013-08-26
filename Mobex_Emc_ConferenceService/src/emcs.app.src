@@ -1,0 +1,9 @@
+%% -*- erlang -*-
+{application, emcs,
+ [{description, "emcs"},
+  {vsn, "0.1"},
+  {modules, []},
+  {registered, []},
+  {mod, {'emcs_app', []}},
+  {env, []},
+  {applications, [kernel, stdlib, crypto]}]}.
