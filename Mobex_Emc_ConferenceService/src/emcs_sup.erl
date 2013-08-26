@@ -41,7 +41,9 @@ upgrade() ->
 %% @spec init([]) -> SupervisorTree
 %% @doc supervisor callback.
 init([]) ->
-    Web = web_specs(emcs_web, 9000),
+	emcs_config:start_link(), 
+	Port=emcs_config:get_config(port),
+    Web = web_specs(emcs_web, Port),
     Processes = [Web],
     Strategy = {one_for_one, 10, 10},
     {ok,

@@ -6,10 +6,12 @@
 -module(emcs_web).
 -author("Mochi Media <dev@mochimedia.com>").
 
+-include("emcs.hrl").
+
 -export([start/1, stop/0, loop/2]).
 
 %% MySQL Configuration
--define(MYSQL_SERVER, "localhost").
+-define(MYSQL_SERVER, "192.168.1.143").
 -define(MYSQL_USER, "root").
 -define(MYSQL_PASSWD, "password").
 -define(MYSQL_DB, "emc").
@@ -22,12 +24,14 @@
 
 start(Options) ->
     {DocRoot, Options1} = get_option(docroot, Options),
+	{{host,Host},{username,Username},{password,Password}, {dbname, Dbname}}=emcs_config:get_config(database),
+	error_logger:info_msg("database config message ~n ~p~n",[Host]),
     Loop = fun (Req) ->
                    ?MODULE:loop(Req, DocRoot)
            end,
     % start mysql
     application:start(emysql),
-    emysql:add_pool(myjqrealtime, 1, ?MYSQL_USER, ?MYSQL_PASSWD, ?MYSQL_SERVER, ?MYSQL_PORT, ?MYSQL_DB, utf8),
+    emysql:add_pool(myjqrealtime, 1, Username, Password, Host, ?MYSQL_PORT, Dbname, utf8),
 	
     mochiweb_http:start([{name, ?MODULE}, {loop, Loop} | Options1]).
 
