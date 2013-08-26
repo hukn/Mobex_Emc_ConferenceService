@@ -45,7 +45,7 @@ check_session(Uid) ->
     %% Check session
     CheckSession = emysql:execute(myjqrealtime, 
         lists:concat([
-            "SELECT * FROM emc_user_meeting WHERE flag=1 and uid = ", 
+            "SELECT * FROM emc_meeting_user_log WHERE flag=1 and uid = ", 
             emysql_util:quote(getclean(Uid)),
             " LIMIT 1"
         ]
@@ -68,7 +68,7 @@ check_have_new_conference(Uid) ->
     %% Check session
     CheckSession = emysql:execute(myjqrealtime, 
         lists:concat([
-            "SELECT * FROM emc_user_meeting WHERE status=0 and flag=0 and uid = ", 
+            "SELECT * FROM emc_meeting_user_log WHERE status=0 and flag=0 and uid = ", 
             emysql_util:quote(getclean(Uid)),
             " LIMIT 1"
         ]
@@ -116,7 +116,7 @@ loop(Req, DocRoot) ->
         Type:What ->
 			%%case Path of
             %%    "test/" ++ Uid ->
-			%%   emysql:prepare(my_stmt, <<"delete from emc_user_meeting where uid =?">>),
+			%%   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
 			%%   emysql:execute(myjqrealtime, my_stmt, [Uid])
 			%%end,
             Report = ["web request failed",
@@ -142,7 +142,7 @@ feed(Response, Id, N) ->
 									true->
 										Result = emysql:execute(myjqrealtime,
 																lists:concat([
-																			  "SELECT mid,status FROM emc_user_meeting WHERE flag=0 and  uid = ",
+																			  "SELECT mid,status FROM emc_meeting_user_log WHERE flag=0 and  uid = ",
 																			  emysql_util:quote(getclean(Id)),
 																			  " and id>",
 																			  emysql_util:quote(getNumber(Rid))
@@ -154,7 +154,7 @@ feed(Response, Id, N) ->
 									false->
 										Result = emysql:execute(myjqrealtime,
 																lists:concat([
-																			  "SELECT mid,status FROM emc_user_meeting WHERE flag=0 and   uid = ",
+																			  "SELECT mid,status FROM emc_meeting_user_log WHERE flag=0 and   uid = ",
 																			  emysql_util:quote(getclean(Id)),
 																			  ""
 																			 ]
@@ -164,9 +164,9 @@ feed(Response, Id, N) ->
 										Response:write_chunk(Myjson)
 								end;
 						false ->%%not login in before
-                               emysql:prepare(my_stmt, <<"delete from emc_user_meeting where uid =?">>),
+                               emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
 							   emysql:execute(myjqrealtime, my_stmt, [Id]),
-							   emysql:prepare(my_stmt, <<"INSERT INTO emc_user_meeting SET uid =?, flag=?">>),
+							   emysql:prepare(my_stmt, <<"INSERT INTO emc_meeting_user_log SET uid =?, flag=?">>),
 							   emysql:execute(myjqrealtime, my_stmt, [Id,1])
 					end,
            Response:write_chunk("|")
