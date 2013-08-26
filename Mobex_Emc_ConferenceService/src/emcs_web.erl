@@ -25,7 +25,7 @@
 start(Options) ->
     {DocRoot, Options1} = get_option(docroot, Options),
 	{{host,Host},{username,Username},{password,Password}, {dbname, Dbname}}=emcs_config:get_config(database),
-	error_logger:info_msg("database config message ~n ~p~n",[Host]),
+	%%error_logger:info_msg("database config message ~n ~p~n",[Host]),
     Loop = fun (Req) ->
                    ?MODULE:loop(Req, DocRoot)
            end,
