@@ -85,8 +85,10 @@ check_have_new_conference(Uid) ->
             false
     end.
 
+
 loop(Req, DocRoot) ->
     "/" ++ Path = Req:get(path),
+	%%error_logger:info_msg("Path message ~n ~p~n",[Path]),
     try
         case Req:get(method) of
             Method when Method =:= 'GET'; Method =:= 'HEAD' ->
@@ -114,11 +116,13 @@ loop(Req, DocRoot) ->
         end
     catch
         Type:What ->
-			case Path of
-                "emcs/" ++ Uid ->
-			   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
-			   emysql:execute(myjqrealtime, my_stmt, [Uid])
-			end,
+			%% for test
+			%%case Path of
+            %%    "emcs/" ++ Uid ->
+			%%   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+			%%   emysql:execute(myjqrealtime, my_stmt, [Uid])
+			%%end,
+
             %%Report = ["web request failed",
             %%          {path, Path},
             %%          {type, Type}, {what, What},
@@ -134,7 +138,7 @@ feed(Response, Id, N) ->
         %{router_msg, Msg} ->
         %    Html = io_lib:format("Recvd msg #~w: '~s'<br/>", [N, Msg]),
         %    Response:write_chunk(Html);
-    after 1000 ->
+    after 5000 ->
 					case check_session(Id) of
 						{Rid} ->%%login in before
                               
@@ -150,6 +154,9 @@ feed(Response, Id, N) ->
 																			)),
 										JSON = emysql_util:as_json(Result),
 										Myjson = mochijson2:encode([<<"new">>,1|JSON]),
+                                       %% for test
+                                       %%emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+							           %%emysql:execute(myjqrealtime, my_stmt, [Id]),										
 										Response:write_chunk(Myjson);
 									false->
 										Result = emysql:execute(myjqrealtime,
@@ -159,17 +166,28 @@ feed(Response, Id, N) ->
 																			  ""
 																			 ]
 																			)),
-										JSON = emysql_util:as_json(Result),
-										Myjson = mochijson2:encode([<<"new">>,0|JSON]),
-										Response:write_chunk(Myjson)
+										Records = emysql_util:as_record(Result, sessions, record_info(fields, sessions)),
+                                            if
+												length(Records) > 0 ->
+													JSON = emysql_util:as_json(Result),
+													Myjson = mochijson2:encode([<<"new">>,0|JSON]),
+													Response:write_chunk(Myjson);
+												true ->
+                                                  Response:write_chunk("")
+											end
+                                       %% for test
+                                       %%emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+							           %%emysql:execute(myjqrealtime, my_stmt, [Id]),									
+								       %% Response:write_chunk("")
 								end;
 						false ->%%not login in before
-                               emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
-							   emysql:execute(myjqrealtime, my_stmt, [Id]),
+                               %% for test
+                               %%emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+							   %%emysql:execute(myjqrealtime, my_stmt, [Id]),
 							   emysql:prepare(my_stmt, <<"INSERT INTO emc_meeting_user_log SET uid =?, flag=?">>),
 							   emysql:execute(myjqrealtime, my_stmt, [Id,1])
 					end,
-           Response:write_chunk("|")
+           Response:write_chunk("")
     end,
     feed(Response, Id, N+1).
 
