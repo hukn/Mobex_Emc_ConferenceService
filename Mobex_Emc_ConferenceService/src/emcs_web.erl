@@ -141,7 +141,6 @@ feed(Response, Id, N) ->
     after 5000 ->
 					case check_session(Id) of
 						{Rid} ->%%login in before
-                              
 							    case check_have_new_conference(Id) of
 									true->
 										Result = emysql:execute(myjqrealtime,
@@ -178,16 +177,16 @@ feed(Response, Id, N) ->
                                        %% for test
                                        %%emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
 							           %%emysql:execute(myjqrealtime, my_stmt, [Id]),					
-								        Response:write_chunk("")
+								        Response:write_chunk("|")
 								end;
 						false ->%%not login in before
                                %% for test
                                %%emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
 							   %%emysql:execute(myjqrealtime, my_stmt, [Id]),
 							   emysql:prepare(my_stmt, <<"INSERT INTO emc_meeting_user_log SET uid =?, flag=?">>),
-							   emysql:execute(myjqrealtime, my_stmt, [Id,1])
-					end,
-           Response:write_chunk("|")
+							   emysql:execute(myjqrealtime, my_stmt, [Id,1]),
+							   Response:write_chunk("|")
+					end
     end,
     feed(Response, Id, N+1).
 
