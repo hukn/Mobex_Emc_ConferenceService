@@ -117,11 +117,11 @@ loop(Req, DocRoot) ->
     catch
         Type:What ->
 			%% for test
-			case Path of
-                "emcs/" ++ Uid ->
-			   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
-			   emysql:execute(myjqrealtime, my_stmt, [Uid])
-			end,
+			%%case Path of
+            %%    "emcs/" ++ Uid ->
+			%%   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+			%%   emysql:execute(myjqrealtime, my_stmt, [Uid])
+			%%end,
 
             %%Report = ["web request failed",
             %%          {path, Path},
@@ -173,21 +173,21 @@ feed(Response, Id, N) ->
 													Myjson = mochijson2:encode([<<"new">>,0|JSON]),
 													Response:write_chunk(Myjson);
 												true ->
-                                                  Response:write_chunk("")
+                                                  Response:write_chunk("|")
 											end,
                                        %% for test
-                                       emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
-							           emysql:execute(myjqrealtime, my_stmt, [Id]),					
-								        Response:write_chunk("")
+                                       %%emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+							           %%emysql:execute(myjqrealtime, my_stmt, [Id]),					
+								        Response:write_chunk("|")
 								end;
 						false ->%%not login in before
                                %% for test
-                               emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
-							   emysql:execute(myjqrealtime, my_stmt, [Id]),
+                               %%emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+							   %%emysql:execute(myjqrealtime, my_stmt, [Id]),
 							   emysql:prepare(my_stmt, <<"INSERT INTO emc_meeting_user_log SET uid =?, flag=?">>),
 							   emysql:execute(myjqrealtime, my_stmt, [Id,1])
 					end,
-           Response:write_chunk("")
+           Response:write_chunk("|")
     end,
     feed(Response, Id, N+1).
 
