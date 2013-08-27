@@ -18,7 +18,7 @@
 -define(MYSQL_PORT, 3306).
 
 -record(sessions, {id, uid, status,flag,mid}).
--record(meetings, { mid, status}).
+
 
 %% External API
 
@@ -119,10 +119,10 @@ loop(Req, DocRoot) ->
 			   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
 			   emysql:execute(myjqrealtime, my_stmt, [Uid])
 			end,
-            Report = ["web request failed",
-                      {path, Path},
-                      {type, Type}, {what, What},
-                      {trace, erlang:get_stacktrace()}],
+            %%Report = ["web request failed",
+            %%          {path, Path},
+            %%          {type, Type}, {what, What},
+            %%          {trace, erlang:get_stacktrace()}],
             %%error_logger:error_report(Report),
             %% NOTE: mustache templates need \ because they are not awesome.
             Req:respond({500, [{"Content-Type", "text/plain"}],
