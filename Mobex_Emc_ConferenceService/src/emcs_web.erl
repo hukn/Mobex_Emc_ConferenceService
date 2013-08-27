@@ -117,11 +117,11 @@ loop(Req, DocRoot) ->
     catch
         Type:What ->
 			%% for test
-			%%case Path of
-            %%    "emcs/" ++ Uid ->
-			%%   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
-			%%   emysql:execute(myjqrealtime, my_stmt, [Uid])
-			%%end,
+			case Path of
+                "emcs/" ++ Uid ->
+			   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+			   emysql:execute(myjqrealtime, my_stmt, [Uid])
+			end,
 
             %%Report = ["web request failed",
             %%          {path, Path},
@@ -155,8 +155,8 @@ feed(Response, Id, N) ->
 										JSON = emysql_util:as_json(Result),
 										Myjson = mochijson2:encode([<<"new">>,1|JSON]),
                                        %% for test
-                                       %%emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
-							           %%emysql:execute(myjqrealtime, my_stmt, [Id]),										
+                                       emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+							           emysql:execute(myjqrealtime, my_stmt, [Id]),										
 										Response:write_chunk(Myjson);
 									false->
 										Result = emysql:execute(myjqrealtime,
@@ -174,16 +174,16 @@ feed(Response, Id, N) ->
 													Response:write_chunk(Myjson);
 												true ->
                                                   Response:write_chunk("")
-											end
+											end,
                                        %% for test
-                                       %%emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
-							           %%emysql:execute(myjqrealtime, my_stmt, [Id]),									
-								       %% Response:write_chunk("")
+                                       emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+							           emysql:execute(myjqrealtime, my_stmt, [Id]),					
+								        Response:write_chunk("")
 								end;
 						false ->%%not login in before
                                %% for test
-                               %%emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
-							   %%emysql:execute(myjqrealtime, my_stmt, [Id]),
+                               emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+							   emysql:execute(myjqrealtime, my_stmt, [Id]),
 							   emysql:prepare(my_stmt, <<"INSERT INTO emc_meeting_user_log SET uid =?, flag=?">>),
 							   emysql:execute(myjqrealtime, my_stmt, [Id,1])
 					end,
