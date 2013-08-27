@@ -114,16 +114,16 @@ loop(Req, DocRoot) ->
         end
     catch
         Type:What ->
-			%%case Path of
-            %%    "test/" ++ Uid ->
-			%%   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
-			%%   emysql:execute(myjqrealtime, my_stmt, [Uid])
-			%%end,
+			case Path of
+                "emcs/" ++ Uid ->
+			   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+			   emysql:execute(myjqrealtime, my_stmt, [Uid])
+			end,
             Report = ["web request failed",
                       {path, Path},
                       {type, Type}, {what, What},
                       {trace, erlang:get_stacktrace()}],
-            error_logger:error_report(Report),
+            %%error_logger:error_report(Report),
             %% NOTE: mustache templates need \ because they are not awesome.
             Req:respond({500, [{"Content-Type", "text/plain"}],
                          "request failed, sorry\n"})
