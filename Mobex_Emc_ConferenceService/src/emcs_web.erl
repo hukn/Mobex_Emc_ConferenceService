@@ -91,7 +91,7 @@ loop(Req, DocRoot) ->
         case Req:get(method) of
             Method when Method =:= 'GET'; Method =:= 'HEAD' ->
                 case Path of
-                "test/" ++ Id ->
+                "emcs/" ++ Id ->
                     Response = Req:ok({"text/html; charset=utf-8",
                                       [{"Server","Mochiweb-Test"}],
                                       chunked}),
