@@ -151,12 +151,19 @@ feed(Response, Id, N) ->
 																			  emysql_util:quote(getNumber(Rid))
 																			 ]
 																			)),
-										JSON = emysql_util:as_json(Result),
-										Myjson = mochijson2:encode({<<"isNew">>,0,"content",JSON}),
+										Records = emysql_util:as_record(Result, sessions, record_info(fields, sessions)),
+                                            if
+												length(Records) > 0 ->
+													JSON = emysql_util:as_json(Result),
+													Myjson = mochijson2:encode({struct,[{<<"isNew">>,1},{"content",JSON}]}),
+													Response:write_chunk("<"++Myjson++">");
+												 true ->
+                                                   Response:write_chunk("")
+											end,
                                        %% for test
-                                        emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where flag=0 and uid =?">>),
-							            emysql:execute(myjqrealtime, my_stmt, [Id]),										
-										Response:write_chunk(Myjson);
+                                        emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where flag=0 and  uid =?">>),
+							            emysql:execute(myjqrealtime, my_stmt, [Id]) ,					
+								        Response:write_chunk("|");
 									false->
 										Result = emysql:execute(myjqrealtime,
 																lists:concat([
@@ -169,8 +176,8 @@ feed(Response, Id, N) ->
                                             if
 												length(Records) > 0 ->
 													JSON = emysql_util:as_json(Result),
-													Myjson = mochijson2:encode({<<"isNew">>,0,"content",JSON}),
-													Response:write_chunk(Myjson);
+													Myjson = mochijson2:encode({struct,[{<<"isNew">>,0},{"content",JSON}]}),
+													Response:write_chunk("<"++Myjson++">");
 												 true ->
                                                    Response:write_chunk("")
 											end,
