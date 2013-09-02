@@ -26,7 +26,8 @@ handle_call({connect, Nick, Socket}, _From, Users) ->
     Response = case dict:is_key(Nick, Users) of
         true ->
             NewUsers = Users,
-            nick_in_use;
+            %nick_in_use;
+		    {ok};
         false ->
             NewUsers = dict:append(Nick, Socket, Users),
             {ok}

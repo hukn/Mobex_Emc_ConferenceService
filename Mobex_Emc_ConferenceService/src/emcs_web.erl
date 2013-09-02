@@ -58,7 +58,7 @@ try_connection(Nick, Socket) ->
         {ok} ->
             gen_tcp:send(Socket, "CONNECT:OK\n"),
             %%gen_server:cast(emcs_controller, {join, Nick}),
-            gen_tcp:send(Socket, "{uid,Nick}"++Nick++"\n"),
+            %%gen_tcp:send(Socket, "{uid,Nick}"++Nick++"\n"),
             loop(Nick, Socket);
         nick_in_use ->
             gen_tcp:send(Socket, "CONNECT:ERROR:Nick in use.\n"),
