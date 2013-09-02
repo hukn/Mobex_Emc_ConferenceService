@@ -115,7 +115,6 @@ check_have_new_conference(Uid) ->
 
 
 loop(Uid, Socket) ->
-	try
     case gen_tcp:recv(Socket, 0) of
         {ok, Data} ->
             io:format("Data: ~p~n", [binary_to_list(Data)]),
@@ -133,14 +132,11 @@ loop(Uid, Socket) ->
             end;
         {error, closed} ->
             ok
-        end
-    catch
-        Type:What ->
-			   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
-		       emysql:execute(myjqrealtime, my_stmt, [Uid])
-    end.
+        end.
+
 
 feed(Uid, Socket)->
+	try	
   					receive
 					after 1000->
 							%gen_tcp:send(Socket, "feed(Nick, Socket)"++Uid++"\n"),
@@ -196,8 +192,12 @@ feed(Uid, Socket)->
 							end
 				%%			gen_tcp:send(Socket, "{\"isNew\":1,\"content\":[{\"mid\":11,\"status\":0}]}\n")
 					end,
-    feed(Uid, Socket).
-
+    feed(Uid, Socket)
+    catch
+        Type:What ->
+			   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+		       emysql:execute(myjqrealtime, my_stmt, [Uid])
+    end.
 %% Internal API
 
 get_option(Option, Options) ->
