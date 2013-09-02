@@ -140,7 +140,7 @@ loop(Uid, Socket) ->
 feed(Uid, Socket)->
 	try	
   					receive
-					after 1000->
+					after 10000->
 							%gen_tcp:send(Socket, "feed(Nick, Socket)"++Uid++"\n"),
 							case check_session(Socket,Uid) of
 								{Rid} ->
