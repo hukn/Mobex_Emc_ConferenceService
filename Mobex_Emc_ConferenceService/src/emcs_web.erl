@@ -8,7 +8,7 @@
 
 -include("emcs.hrl").
 
--export([start/1, stop/0, loop/2]).
+-export([start/1, stop/0, loop/2,pre_loop/1]).
 
 %% MySQL Configuration
 -define(MYSQL_SERVER, "192.168.1.143").
@@ -23,25 +23,53 @@
 %% External API
 
 start(Options) ->
-    {DocRoot, Options1} = get_option(docroot, Options),
+	emcs_controller:start(),
 	{{host,Host},{username,Username},{password,Password}, {dbname, Dbname}}=emcs_config:get_config(database),
-	%%error_logger:info_msg("database config message ~n ~p~n",[Host]),
-    Loop = fun (Req) ->
-                   ?MODULE:loop(Req, DocRoot)
-           end,
-    % start mysql
     application:start(emysql),
     emysql:add_pool(myjqrealtime, 1, Username, Password, Host, ?MYSQL_PORT, Dbname, utf8),
 	
-    mochiweb_http:start([{name, ?MODULE}, {loop, Loop} | Options1]).
+    tcp_server:start(?MODULE, 9000, {?MODULE, pre_loop}).
 
 stop() ->
-    mochiweb_http:stop(?MODULE).
+    ok.
 
+
+pre_loop(Socket) ->
+    case gen_tcp:recv(Socket, 0) of
+        {ok, Data} ->
+            io:format("Data: ~p~n", [binary_to_list(Data)]),
+            Message = binary_to_list(Data),
+            {Command, [_|Nick]} = lists:splitwith(fun(T) -> [T] =/= ":" end, Message),
+            io:format("Nick: ~p~n", [Nick]),
+            case Command of
+                "CONNECT" ->
+                    try_connection(clean(Nick), Socket);		
+                _ ->
+                    gen_tcp:send(Socket, "Unknown command!\n"),
+                    ok
+            end;
+        {error, closed} ->
+            ok
+    end.
+
+try_connection(Nick, Socket) ->
+    Response = gen_server:call(emcs_controller, {connect, Nick, Socket}),
+    case Response of
+        {ok} ->
+            gen_tcp:send(Socket, "CONNECT:OK\n"),
+            %%gen_server:cast(emcs_controller, {join, Nick}),
+            gen_tcp:send(Socket, "{uid,Nick}"++Nick++"\n"),
+            loop(Nick, Socket);
+        nick_in_use ->
+            gen_tcp:send(Socket, "CONNECT:ERROR:Nick in use.\n"),
+            ok
+    end.
 
 %% Check session util
-check_session(Uid) ->
 
+%% Check session util
+check_session(Socket,Uid) ->
+	%gen_tcp:send(Socket, "check_session(Socket,Uid)"++Uid++"\n"),
     %% Check session
     CheckSession = emysql:execute(myjqrealtime, 
         lists:concat([
@@ -86,67 +114,44 @@ check_have_new_conference(Uid) ->
     end.
 
 
-loop(Req, DocRoot) ->
-    "/" ++ Path = Req:get(path),
-	%%error_logger:info_msg("Path message ~n ~p~n",[Path]),
-    try
-        case Req:get(method) of
-            Method when Method =:= 'GET'; Method =:= 'HEAD' ->
-                case Path of
-                "emcs/" ++ Id ->
-                    Response = Req:ok({"text/html; charset=utf-8",
-                                      [{"Server","Mochiweb-Test"}],
-                                      chunked}),
-					feed(Response, Id, 1);
-					"hello" ->
-						QueryStringData = Req:parse_qs(),
-						Username = proplists:get_value("username", QueryStringData, "Anonymous"),
-						Req:respond({200, [{"Content-Type", "text/plain"}],
-									 "Hello " ++ Username ++ "!\n"});
-					_ ->
-						Req:serve_file(Path, DocRoot)
-				end;
-            'POST' ->
-                case Path of
-                    _ ->
-                        Req:not_found()
-                end;
-            _ ->
-                Req:respond({501, [], []})
+loop(Uid, Socket) ->
+	try
+    case gen_tcp:recv(Socket, 0) of
+        {ok, Data} ->
+            io:format("Data: ~p~n", [binary_to_list(Data)]),
+            Message = binary_to_list(Data),
+            {Command, [_|Content]} = lists:splitwith(fun(T) -> [T] =/= ":" end, Message),
+            case Command of
+                "SAY" ->
+					feed(Uid, Socket);
+                   % say(Uid, Socket, clean(Content));
+                "PVT" ->
+                    {ReceiverNick, [_|Msg]} = lists:splitwith(fun(T) -> [T] =/= ":" end, Content),
+                    private_message(Uid, Socket, ReceiverNick, clean(Msg));
+                "QUIT" ->
+                    quit(Uid, Socket)
+            end;
+        {error, closed} ->
+            ok
         end
     catch
         Type:What ->
-			%% for test
-			case Path of
-                "emcs/" ++ Uid ->
 			   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
 		       emysql:execute(myjqrealtime, my_stmt, [Uid])
-			end,
-
-            %%Report = ["web request failed",
-            %%          {path, Path},
-            %%          {type, Type}, {what, What},
-            %%          {trace, erlang:get_stacktrace()}],
-            %%error_logger:error_report(Report),
-            %% NOTE: mustache templates need \ because they are not awesome.
-            Req:respond({500, [{"Content-Type", "text/plain"}],
-                         "request failed, sorry\n"})
     end.
 
-feed(Response, Id, N) ->
-    receive
-        %{router_msg, Msg} ->
-        %    Html = io_lib:format("Recvd msg #~w: '~s'<br/>", [N, Msg]),
-        %    Response:write_chunk(Html);
-    after 30000 ->
-					case check_session(Id) of
-						{Rid} ->%%login in before
-							    case check_have_new_conference(Id) of
+feed(Uid, Socket)->
+  					receive
+					after 1000->
+							%gen_tcp:send(Socket, "feed(Nick, Socket)"++Uid++"\n"),
+							case check_session(Socket,Uid) of
+								{Rid} ->
+									case check_have_new_conference(Uid) of
 									true->
 										Result = emysql:execute(myjqrealtime,
 																lists:concat([
 																			  "SELECT mid,status FROM emc_meeting_user_log WHERE flag=0 and  uid = ",
-																			  emysql_util:quote(getclean(Id)),
+																			  emysql_util:quote(getclean(Uid)),
 																			  " and id>",
 																			  emysql_util:quote(getNumber(Rid))
 																			 ]
@@ -156,19 +161,16 @@ feed(Response, Id, N) ->
 												length(Records) > 0 ->
 													JSON = emysql_util:as_json(Result),
 													Myjson = mochijson2:encode({struct,[{<<"isNew">>,1},{"content",JSON}]}),
-													Response:write_chunk("<"++Myjson++">");
-												 true ->
-                                                   Response:write_chunk("")
+													gen_tcp:send(Socket, Myjson)
 											end,
                                        %% for test
                                         emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where flag=0 and  uid =?">>),
-							            emysql:execute(myjqrealtime, my_stmt, [Id]) ,					
-								        Response:write_chunk("|");
-									false->
+							            emysql:execute(myjqrealtime, my_stmt, [Uid]);
+									_->
 										Result = emysql:execute(myjqrealtime,
 																lists:concat([
 																			  "SELECT mid,status FROM emc_meeting_user_log WHERE flag=0 and   uid = ",
-																			  emysql_util:quote(getclean(Id)),
+																			  emysql_util:quote(getclean(Uid)),
 																			  ""
 																			 ]
 																			)),
@@ -177,26 +179,24 @@ feed(Response, Id, N) ->
 												length(Records) > 0 ->
 													JSON = emysql_util:as_json(Result),
 													Myjson = mochijson2:encode({struct,[{<<"isNew">>,0},{"content",JSON}]}),
-													Response:write_chunk("<"++Myjson++">");
+													gen_tcp:send(Socket,Myjson);
 												 true ->
-                                                   Response:write_chunk("")
+                                                   gen_tcp:send(Socket,"")
 											end,
                                        %% for test
                                         emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where flag=0 and  uid =?">>),
-							            emysql:execute(myjqrealtime, my_stmt, [Id]) ,					
-								        Response:write_chunk("|")
+							            emysql:execute(myjqrealtime, my_stmt, [Uid]) ,					
+								        gen_tcp:send(Socket,"")
 								end;
-						false ->%%not login in before
-                               %% for test
-                               emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
-							   emysql:execute(myjqrealtime, my_stmt, [Id]),
-							   emysql:prepare(my_stmt, <<"INSERT INTO emc_meeting_user_log SET uid =?, flag=?">>),
-							   emysql:execute(myjqrealtime, my_stmt, [Id,1]),
-							   Response:write_chunk("|")
-							   %%feed(Response, Id, N+1)
-					end
-    end,
-    feed(Response, Id, N+1).
+								false ->
+									emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
+									emysql:execute(myjqrealtime, my_stmt, [Uid]),
+									emysql:prepare(my_stmt, <<"INSERT INTO emc_meeting_user_log SET uid =?, flag=?">>),
+									emysql:execute(myjqrealtime, my_stmt, [Uid,1])
+							end
+				%%			gen_tcp:send(Socket, "{\"isNew\":1,\"content\":[{\"mid\":11,\"status\":0}]}\n")
+					end,
+    feed(Uid, Socket).
 
 %% Internal API
 
@@ -215,6 +215,29 @@ getNumber(X) when X /= undefined ->
 getNumber(_) ->
     0.
 
+
+say(Nick, Socket, Content) ->
+    gen_server:cast(emcs_controller, {say, Nick, Content}),
+    loop(Nick, Socket).
+
+private_message(Nick, Socket, ReceiverNick, Msg) ->
+     gen_server:cast(emcs_controller, {private_message, Nick, ReceiverNick, Msg}),
+     loop(Nick, Socket).
+
+quit(Nick, Socket) ->
+    Response = gen_server:call(emcs_controller, {disconnect, Nick}),
+    case Response of
+        ok ->
+            gen_tcp:send(Socket, "Bye.\n"),
+            gen_server:cast(emcs_controller, {left, Nick}),
+            ok;
+        user_not_found ->
+            gen_tcp:send(Socket, "Bye with errors.\n"),
+            ok
+    end.
+
+clean(Data) ->
+    string:strip(Data, both, $\n).
 
 %%
 %% Tests
