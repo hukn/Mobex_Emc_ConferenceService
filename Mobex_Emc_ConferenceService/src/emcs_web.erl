@@ -128,7 +128,9 @@ loop(Uid, Socket) ->
                     {ReceiverNick, [_|Msg]} = lists:splitwith(fun(T) -> [T] =/= ":" end, Content),
                     private_message(Uid, Socket, ReceiverNick, clean(Msg));
                 "QUIT" ->
-                    quit(Uid, Socket)
+                    quit(Uid, Socket);
+                _ ->
+                    quit(Uid, Socket)				
             end;
         {error, closed} ->
             ok
@@ -196,7 +198,8 @@ feed(Uid, Socket)->
     catch
         Type:What ->
 			   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
-		       emysql:execute(myjqrealtime, my_stmt, [Uid])
+		       emysql:execute(myjqrealtime, my_stmt, [Uid]),
+			   quit(Uid, Socket)
     end.
 %% Internal API
 
