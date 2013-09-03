@@ -57,11 +57,12 @@ try_connection(Nick, Socket) ->
     case Response of
         {ok} ->
             gen_tcp:send(Socket, "CONNECT:OK\n"),
-            %%gen_server:cast(emcs_controller, {join, Nick}),
+            gen_server:cast(emcs_controller, {join, Nick}),
             %%gen_tcp:send(Socket, "{uid,Nick}"++Nick++"\n"),
             loop(Nick, Socket);
         nick_in_use ->
-            gen_tcp:send(Socket, "CONNECT:ERROR:Nick in use.\n"),
+            gen_tcp:send(Socket, "CONNECT:ERROR:0\n"),
+			quit(Nick, Socket),
             ok
     end.
 
@@ -237,6 +238,16 @@ quit(Nick, Socket) ->
             ok;
         user_not_found ->
             gen_tcp:send(Socket, "Bye with errors.\n"),
+            ok
+    end.
+
+quit(Nick) ->
+    Response = gen_server:call(emcs_controller, {disconnect, Nick}),
+    case Response of
+        ok ->
+            gen_server:cast(emcs_controller, {left, Nick}),
+            ok;
+        user_not_found ->
             ok
     end.
 

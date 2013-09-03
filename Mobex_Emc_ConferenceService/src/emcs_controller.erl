@@ -26,8 +26,7 @@ handle_call({connect, Nick, Socket}, _From, Users) ->
     Response = case dict:is_key(Nick, Users) of
         true ->
             NewUsers = Users,
-            %nick_in_use;
-		    {ok};
+            nick_in_use;
         false ->
             NewUsers = dict:append(Nick, Socket, Users),
             {ok}
@@ -51,7 +50,7 @@ handle_call(_Message, _From, State) ->
 
 % handle_cast is invoked in response to gen_server:cast
 handle_cast({say, Nick, Msg}, Users) ->
-    broadcast(Nick, "SAID:" ++ Nick ++ ":" ++ Msg ++ "\n", Users),
+    %broadcast(Nick, "SAID:" ++ Nick ++ ":" ++ Msg ++ "\n", Users),
     {noreply, Users};
 
 handle_cast({private_message, Nick, Receiver, Msg}, Users) ->
@@ -65,11 +64,11 @@ handle_cast({private_message, Nick, Receiver, Msg}, Users) ->
     {noreply, Users};
 
 handle_cast({join, Nick}, Users) ->
-    broadcast(Nick, "JOIN:" ++ Nick ++ "\n", Users),
+    %broadcast(Nick, "JOIN:" ++ Nick ++ "\n", Users),
     {noreply, Users};
 
 handle_cast({left, Nick}, Users) ->
-    broadcast(Nick, "LEFT:" ++ Nick ++ "\n", Users),
+    %broadcast(Nick, "LEFT:" ++ Nick ++ "\n", Users),
     {noreply, Users};
 
 handle_cast(_Message, State) ->
