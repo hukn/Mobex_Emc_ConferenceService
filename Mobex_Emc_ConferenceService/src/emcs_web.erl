@@ -66,8 +66,6 @@ try_connection(Nick, Socket) ->
     end.
 
 %% Check session util
-
-%% Check session util
 check_session(Uid) ->
     %% Check session
     CheckSession = emysql:execute(myjqrealtime, 
