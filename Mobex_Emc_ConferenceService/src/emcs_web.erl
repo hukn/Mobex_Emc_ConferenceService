@@ -68,8 +68,7 @@ try_connection(Nick, Socket) ->
 %% Check session util
 
 %% Check session util
-check_session(Socket,Uid) ->
-	%gen_tcp:send(Socket, "check_session(Socket,Uid)"++Uid++"\n"),
+check_session(Uid) ->
     %% Check session
     CheckSession = emysql:execute(myjqrealtime, 
         lists:concat([
@@ -78,17 +77,15 @@ check_session(Socket,Uid) ->
             " order by id desc LIMIT 1"
         ]
     )),
-
     %% Convert to records
     Records = emysql_util:as_record(CheckSession, sessions, record_info(fields, sessions)),
-
     %% Check existence & return user_id if possible
-    if
-        length(Records) == 1 ->
+    case length(Records) == 1 of
+		true->
             %% Get UserId of element
             [{_, Id,_, _,_, _}] = [Rec || Rec <- Records],
             {integer_to_list(Id)};
-        true ->
+        false ->
             false
     end.
 
@@ -101,15 +98,13 @@ check_have_new_conference(Uid) ->
             " LIMIT 1"
         ]
     )),
-
     %% Convert to records
     Records = emysql_util:as_record(CheckSession, sessions, record_info(fields, sessions)),
-
     %% Check existence & return true if possible
-    if
-        length(Records) == 1 ->
+    case length(Records) == 1 of
+		true->
             true;
-        true ->
+        false->
             false
     end.
 
@@ -140,13 +135,13 @@ loop(Uid, Socket) ->
 feed(Uid, Socket)->
 	try	
   					receive
-					after 10000->
+					after 5000->
 							%gen_tcp:send(Socket, "feed(Nick, Socket)"++Uid++"\n"),
-							case check_session(Socket,Uid) of
+							case check_session(Uid) of
 								{Rid} ->
 									case check_have_new_conference(Uid) of
-									true->
-										Result = emysql:execute(myjqrealtime,
+										true->
+											Result = emysql:execute(myjqrealtime,
 																lists:concat([
 																			  "SELECT mid,status FROM emc_meeting_user_log WHERE flag=0 and  uid = ",
 																			  emysql_util:quote(getclean(Uid)),
@@ -154,16 +149,22 @@ feed(Uid, Socket)->
 																			  emysql_util:quote(getNumber(Rid))
 																			 ]
 																			)),
-										Records = emysql_util:as_record(Result, sessions, record_info(fields, sessions)),
-                                            if
-												length(Records) > 0 ->
+											Records = emysql_util:as_record(Result, sessions, record_info(fields, sessions)),
+											case length(Records) > 0 of
+												true->
 													JSON = emysql_util:as_json(Result),
-													Myjson = mochijson2:encode({struct,[{<<"isNew">>,1},{"content",JSON}]}),
-													gen_tcp:send(Socket, Myjson)
-											end,
-                                       %% for test
-                                        emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where flag=0 and  uid =?">>),
-							            emysql:execute(myjqrealtime, my_stmt, [Uid]);
+													Myjson = mochijson2:encode({struct,[{<<"isNew">>,1},{"content",JSON}]}),								
+													case gen_tcp:send(Socket, Myjson) of
+														ok->
+															emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where flag=0 and  uid =?">>),
+															emysql:execute(myjqrealtime, my_stmt, [Uid]),
+															feed(Uid, Socket);
+														{error,Reson2}->
+															throw({closed})
+													end;
+												false->
+													feed(Uid, Socket)
+											end;
 									_->
 										Result = emysql:execute(myjqrealtime,
 																lists:concat([
@@ -173,28 +174,30 @@ feed(Uid, Socket)->
 																			 ]
 																			)),
 										Records = emysql_util:as_record(Result, sessions, record_info(fields, sessions)),
-                                            if
-												length(Records) > 0 ->
+											case length(Records) > 0 of
+												true->
 													JSON = emysql_util:as_json(Result),
 													Myjson = mochijson2:encode({struct,[{<<"isNew">>,0},{"content",JSON}]}),
-													gen_tcp:send(Socket,Myjson);
-												 true ->
-                                                   gen_tcp:send(Socket,"")
-											end,
-                                       %% for test
-                                        emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where flag=0 and  uid =?">>),
-							            emysql:execute(myjqrealtime, my_stmt, [Uid]) ,					
-								        gen_tcp:send(Socket,"")
+													case gen_tcp:send(Socket, Myjson) of
+														ok->
+															emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where flag=0 and  uid =?">>),
+															emysql:execute(myjqrealtime, my_stmt, [Uid]),
+															feed(Uid, Socket);
+														{error,Reson}->
+															throw({closed})
+													end;
+												false->
+													feed(Uid, Socket)
+											end
 								end;
 								false ->
 									emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
 									emysql:execute(myjqrealtime, my_stmt, [Uid]),
 									emysql:prepare(my_stmt, <<"INSERT INTO emc_meeting_user_log SET uid =?, flag=?">>),
-									emysql:execute(myjqrealtime, my_stmt, [Uid,1])
+									emysql:execute(myjqrealtime, my_stmt, [Uid,1]),
+									feed(Uid, Socket)									
 							end
-				%%			gen_tcp:send(Socket, "{\"isNew\":1,\"content\":[{\"mid\":11,\"status\":0}]}\n")
-					end,
-    feed(Uid, Socket)
+					end
     catch
         Type:What ->
 			   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
