@@ -11,7 +11,7 @@
 -export([start/1, stop/0, loop/2,pre_loop/1]).
 
 %% MySQL Configuration
--define(MYSQL_SERVER, "192.168.1.143").
+-define(MYSQL_SERVER, "127.0.0.1").
 -define(MYSQL_USER, "root").
 -define(MYSQL_PASSWD, "password").
 -define(MYSQL_DB, "emc").
@@ -134,7 +134,7 @@ loop(Uid, Socket) ->
 feed(Uid, Socket)->
 	try	
   					receive
-					after 5000->
+					after 10000->
 							%gen_tcp:send(Socket, "feed(Nick, Socket)"++Uid++"\n"),
 							case check_session(Uid) of
 								{Rid} ->
