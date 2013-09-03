@@ -152,7 +152,7 @@ feed(Uid, Socket)->
 												true->
 													JSON = emysql_util:as_json(Result),
 													Myjson = mochijson2:encode({struct,[{<<"isNew">>,1},{"content",JSON}]}),								
-													case gen_tcp:send(Socket, Myjson) of
+													case gen_tcp:send(Socket, Myjson++"\n") of
 														ok->
 															emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where flag=0 and  uid =?">>),
 															emysql:execute(myjqrealtime, my_stmt, [Uid]),
@@ -176,7 +176,7 @@ feed(Uid, Socket)->
 												true->
 													JSON = emysql_util:as_json(Result),
 													Myjson = mochijson2:encode({struct,[{<<"isNew">>,0},{"content",JSON}]}),
-													case gen_tcp:send(Socket, Myjson) of
+													case gen_tcp:send(Socket, Myjson++"\n") of
 														ok->
 															emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where flag=0 and  uid =?">>),
 															emysql:execute(myjqrealtime, my_stmt, [Uid]),
