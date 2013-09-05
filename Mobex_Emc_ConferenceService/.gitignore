@@ -3,6 +3,7 @@
 /_test
 /.eunit
 /docs
+/deps
 .DS_Store
 /TEST-*.xml
 *.swp
