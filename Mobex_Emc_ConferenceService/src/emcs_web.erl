@@ -24,11 +24,12 @@
 
 start(Options) ->
 	emcs_controller:start(),
+	Port = emcs_config:get_config(port),
 	{{host,Host},{username,Username},{password,Password}, {dbname, Dbname}}=emcs_config:get_config(database),
     application:start(emysql),
     emysql:add_pool(myjqrealtime, 1, Username, Password, Host, ?MYSQL_PORT, Dbname, utf8),
 	
-    tcp_server:start(?MODULE, 9000, {?MODULE, pre_loop}).
+    tcp_server:start(?MODULE, Port, {?MODULE, pre_loop}).
 
 stop() ->
     ok.
