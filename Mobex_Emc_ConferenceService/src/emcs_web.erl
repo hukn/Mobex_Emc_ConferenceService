@@ -27,7 +27,7 @@ start(Options) ->
 	Port = emcs_config:get_config(port),
 	{{host,Host},{username,Username},{password,Password}, {dbname, Dbname}}=emcs_config:get_config(database),
     application:start(emysql),
-	io:format("Username/Password/Host/Dbname: ~p/~p/~p/~p~n", [Username,Password,Host,Dbname]),
+	%io:format("Username/Password/Host/Dbname: ~p/~p/~p/~p~n", [Username,Password,Host,Dbname]),
     emysql:add_pool(myjqrealtime, 1, Username, Password, Host, ?MYSQL_PORT, Dbname, utf8),
 	
     tcp_server:start(?MODULE, Port, {?MODULE, pre_loop}).
@@ -39,10 +39,10 @@ stop() ->
 pre_loop(Socket) ->
     case gen_tcp:recv(Socket, 0) of
         {ok, Data} ->
-            io:format("Data: ~p~n", [binary_to_list(Data)]),
+            %io:format("Data: ~p~n", [binary_to_list(Data)]),
             Message = binary_to_list(Data),
             {Command, [_|Nick]} = lists:splitwith(fun(T) -> [T] =/= ":" end, Message),
-            io:format("Nick: ~p~n", [Nick]),
+            %io:format("Nick: ~p~n", [Nick]),
             case Command of
                 "CONNECT" ->
                     try_connection(clean(Nick), Socket);		
@@ -113,7 +113,7 @@ check_have_new_conference(Uid) ->
 loop(Uid, Socket) ->
     case gen_tcp:recv(Socket, 0) of
         {ok, Data} ->
-            io:format("Data: ~p~n", [binary_to_list(Data)]),
+            %io:format("Data: ~p~n", [binary_to_list(Data)]),
             Message = binary_to_list(Data),
             {Command, [_|Content]} = lists:splitwith(fun(T) -> [T] =/= ":" end, Message),
             case Command of
@@ -142,7 +142,7 @@ feed(Uid, Socket)->
 								{Rid} ->
 									case check_have_new_conference(Uid) of
 										true->
-											io:format("Uid new: ~p~n", [Uid]),
+											%io:format("Uid new: ~p~n", [Uid]),
 											Result = emysql:execute(myjqrealtime,
 																lists:concat([
 																			  "SELECT mid,status FROM emc_meeting_user_log WHERE flag=0 and  uid = ",
@@ -168,7 +168,7 @@ feed(Uid, Socket)->
 													feed(Uid, Socket)
 											end;
 									_->
-										io:format("Uid no new: ~p~n", [Uid]),
+										%io:format("Uid no new: ~p~n", [Uid]),
 										Result = emysql:execute(myjqrealtime,
 																lists:concat([
 																			  "SELECT mid,status FROM emc_meeting_user_log WHERE flag=0 and   uid = ",
@@ -194,7 +194,7 @@ feed(Uid, Socket)->
 											end
 								end;
 								false ->
-									io:format("Uid no in session: ~p~n", [Uid]),
+									%io:format("Uid no in session: ~p~n", [Uid]),
 									emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
 									emysql:execute(myjqrealtime, my_stmt, [Uid]),
 									emysql:prepare(my_stmt, <<"INSERT INTO emc_meeting_user_log SET uid =?, flag=?">>),
@@ -204,7 +204,7 @@ feed(Uid, Socket)->
 					end
     catch
         Type:What ->
-			   io:format("Uid closed: ~p~n", [Uid]),
+			   %io:format("Uid closed: ~p~n", [Uid]),
 			   emysql:prepare(my_stmt, <<"delete from emc_meeting_user_log where uid =?">>),
 		       emysql:execute(myjqrealtime, my_stmt, [Uid]),
 			   quit(Uid, Socket)
